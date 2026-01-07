@@ -6,6 +6,8 @@ export interface Pipeline {
   description?: string;
   config: string; // YAML/JSON config
   steps: Step[];
+  schedule?: string; // Cron expression
+  scheduleEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
   lastRunAt?: string;
@@ -57,6 +59,8 @@ export interface Run {
   stepsCompleted: number;
   stepsTotal: number;
   error?: string;
+  triggeredBy?: 'manual' | 'schedule' | 'api';
+  sparkAppId?: string;
   logs: LogEntry[];
   stepReports: StepReport[];
 }
@@ -75,7 +79,9 @@ export interface StepReport {
   completedAt?: string;
   duration?: number;
   recordsProcessed?: number;
+  bytesProcessed?: number;
   error?: string;
+  metrics?: Record<string, unknown>;
 }
 
 export interface Connection {
@@ -104,6 +110,29 @@ export interface DashboardStats {
   runsToday: number;
   successRate: number;
   activeRuns: number;
+}
+
+export interface Schedule {
+  id: string;
+  pipelineId: string;
+  pipelineName?: string;
+  cronExpression: string;
+  timezone: string;
+  enabled: boolean;
+  nextRunAt?: string;
+  lastRunAt?: string;
+  createdAt: string;
+}
+
+export interface DataPreview {
+  schema: SchemaColumn[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+}
+
+export interface SchemaColumn {
+  name: string;
+  type: string;
 }
 
 // API Response types

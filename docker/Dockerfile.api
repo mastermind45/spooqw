@@ -1,0 +1,21 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies for node-cron and pg
+RUN apk add --no-cache curl
+
+# Copy API server files
+COPY api-server/ ./
+
+# Install dependencies
+RUN npm install
+
+# Expose ports
+EXPOSE 4242 4243
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD curl -f http://localhost:4242/api/v2/health || exit 1
+
+CMD ["node", "server.js"]

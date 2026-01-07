@@ -6,10 +6,13 @@ import type {
   Connection, 
   DashboardStats,
   ApiResponse,
-  PaginatedResponse 
+  PaginatedResponse,
+  Schedule,
+  DataPreview,
 } from '@/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4242/api/v2';
+const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:4243';
 
 class ApiClient {
   private baseUrl: string;
@@ -34,7 +37,7 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(error.message || `HTTP ${response.status}`);
+      throw new Error(error.message || error.error || `HTTP ${response.status}`);
     }
 
     return response.json();
@@ -123,6 +126,10 @@ class ApiClient {
     return this.request(`/runs/${id}/logs${query ? `?${query}` : ''}`);
   }
 
+  async getDataPreview(runId: string, stepId: string): Promise<DataPreview> {
+    return this.request<DataPreview>(`/runs/${runId}/preview/${stepId}`);
+  }
+
   // Connections
   async getConnections(): Promise<Connection[]> {
     return this.request<Connection[]>('/connections');
@@ -158,8 +165,42 @@ class ApiClient {
     });
   }
 
+  // Schedules
+  async getSchedules(): Promise<Schedule[]> {
+    return this.request<Schedule[]>('/schedules');
+  }
+
+  async createSchedule(schedule: {
+    pipelineId: string;
+    cronExpression: string;
+    timezone?: string;
+    enabled?: boolean;
+  }): Promise<Schedule> {
+    return this.request<Schedule>('/schedules', {
+      method: 'POST',
+      body: JSON.stringify(schedule),
+    });
+  }
+
+  async updateSchedule(id: string, schedule: Partial<{
+    cronExpression: string;
+    timezone: string;
+    enabled: boolean;
+  }>): Promise<Schedule> {
+    return this.request<Schedule>(`/schedules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(schedule),
+    });
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    return this.request<void>(`/schedules/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Health
-  async health(): Promise<{ status: string }> {
+  async health(): Promise<{ status: string; version: string; database?: string }> {
     return this.request('/health');
   }
 }
@@ -167,12 +208,109 @@ class ApiClient {
 export const api = new ApiClient(API_BASE);
 
 // WebSocket for real-time logs
+export class LogsWebSocket {
+  private ws: WebSocket | null = null;
+  private runId: string;
+  private onMessage: (log: LogMessage) => void;
+  private onError?: (error: Event) => void;
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+
+  constructor(
+    runId: string, 
+    onMessage: (log: LogMessage) => void,
+    onError?: (error: Event) => void
+  ) {
+    this.runId = runId;
+    this.onMessage = onMessage;
+    this.onError = onError;
+    this.connect();
+  }
+
+  private connect() {
+    try {
+      this.ws = new WebSocket(`${WS_BASE}/ws/runs/${this.runId}/logs`);
+      
+      this.ws.onopen = () => {
+        console.log(`WebSocket connected for run ${this.runId}`);
+        this.reconnectAttempts = 0;
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const log = JSON.parse(event.data) as LogMessage;
+          this.onMessage(log);
+        } catch {
+          // Plain text message
+          this.onMessage({
+            timestamp: new Date().toISOString(),
+            level: 'INFO',
+            message: event.data,
+          });
+        }
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        this.onError?.(error);
+      };
+
+      this.ws.onclose = () => {
+        console.log(`WebSocket closed for run ${this.runId}`);
+        this.attemptReconnect();
+      };
+    } catch (error) {
+      console.error('Failed to create WebSocket:', error);
+      this.attemptReconnect();
+    }
+  }
+
+  private attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('Max reconnect attempts reached');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    
+    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    
+    this.reconnectTimeout = setTimeout(() => {
+      this.connect();
+    }, delay);
+  }
+
+  close() {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
+}
+
+interface LogMessage {
+  timestamp: string;
+  level: string;
+  message: string;
+  stepId?: string;
+}
+
+// Legacy function for backward compatibility
 export function createLogsWebSocket(runId: string, onMessage: (log: string) => void): WebSocket {
-  const wsUrl = API_BASE.replace('http', 'ws').replace('/api/v2', '');
-  const ws = new WebSocket(`${wsUrl}/ws/runs/${runId}/logs`);
+  const ws = new WebSocket(`${WS_BASE}/ws/runs/${runId}/logs`);
   
   ws.onmessage = (event) => {
-    onMessage(event.data);
+    try {
+      const data = JSON.parse(event.data);
+      onMessage(data.message || event.data);
+    } catch {
+      onMessage(event.data);
+    }
   };
   
   return ws;
