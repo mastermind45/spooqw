@@ -13,6 +13,7 @@ import {
   GitBranch,
   Eye,
   Loader2,
+  MousePointer2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,9 +31,10 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ConfigEditor } from "@/components/pipelines/config-editor";
 import { DAGViewer } from "@/components/pipelines/dag-viewer";
+import { DAGEditor } from "@/components/pipelines/dag-editor";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import type { Pipeline, Step } from "@/types";
+import type { Step } from "@/types";
 
 const DEFAULT_CONFIG = `id: new-pipeline
 desc: Pipeline description
@@ -407,6 +409,10 @@ export default function EditPipelinePage() {
                 <Code className="h-4 w-4" />
                 Configuration
               </TabsTrigger>
+              <TabsTrigger value="visual" className="gap-2">
+                <MousePointer2 className="h-4 w-4" />
+                Visual Editor
+              </TabsTrigger>
               <TabsTrigger value="preview" className="gap-2">
                 <Eye className="h-4 w-4" />
                 Preview DAG
@@ -427,6 +433,26 @@ export default function EditPipelinePage() {
                     onChange={setConfig}
                     language="yaml"
                     height="500px"
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="visual">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Visual Editor</CardTitle>
+                  <CardDescription>
+                    Drag and drop steps to build your pipeline visually
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <DAGEditor
+                    steps={steps}
+                    onChange={(newSteps) => {
+                      setSteps(newSteps);
+                      // TODO: Sync back to YAML config
+                    }}
                   />
                 </CardContent>
               </Card>

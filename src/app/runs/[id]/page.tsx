@@ -30,6 +30,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DAGViewer } from "@/components/pipelines/dag-viewer";
+import { StepDataPreview } from "@/components/pipelines/data-preview";
 import { api, createLogsWebSocket } from "@/lib/api";
 import type { Run, RunStatus, LogEntry, Step, Pipeline } from "@/types";
 
@@ -478,51 +479,59 @@ export default function RunDetailPage() {
                     return (
                       <div
                         key={report.stepId}
-                        className="flex items-center justify-between p-4 rounded-lg border"
+                        className="p-4 rounded-lg border"
                       >
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
-                            {index + 1}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-medium">
+                              {index + 1}
+                            </div>
+                            <div className={`p-2 rounded-full ${stepStatus.bgColor}`}>
+                              <StepIcon
+                                className={`h-4 w-4 ${stepStatus.color} ${
+                                  report.status === "running" ? "animate-spin" : ""
+                                }`}
+                              />
+                            </div>
+                            <div>
+                              <div className="font-medium">{report.stepId}</div>
+                              {report.startedAt && (
+                                <div className="text-sm text-muted-foreground">
+                                  Started {format(new Date(report.startedAt), "HH:mm:ss")}
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className={`p-2 rounded-full ${stepStatus.bgColor}`}>
-                            <StepIcon
-                              className={`h-4 w-4 ${stepStatus.color} ${
-                                report.status === "running" ? "animate-spin" : ""
-                              }`}
-                            />
-                          </div>
-                          <div>
-                            <div className="font-medium">{report.stepId}</div>
-                            {report.startedAt && (
-                              <div className="text-sm text-muted-foreground">
-                                Started {format(new Date(report.startedAt), "HH:mm:ss")}
+                          <div className="flex items-center gap-6 text-sm">
+                            {report.recordsProcessed !== undefined && (
+                              <div className="text-right">
+                                <div className="font-medium">
+                                  {report.recordsProcessed.toLocaleString()}
+                                </div>
+                                <div className="text-muted-foreground">records</div>
                               </div>
                             )}
+                            {report.duration !== undefined && (
+                              <div className="text-right">
+                                <div className="font-medium">{report.duration}s</div>
+                                <div className="text-muted-foreground">duration</div>
+                              </div>
+                            )}
+                            <Badge variant={
+                              report.status === "success" ? "default" :
+                              report.status === "failed" ? "destructive" :
+                              "secondary"
+                            }>
+                              {stepStatus.label}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6 text-sm">
-                          {report.recordsProcessed !== undefined && (
-                            <div className="text-right">
-                              <div className="font-medium">
-                                {report.recordsProcessed.toLocaleString()}
-                              </div>
-                              <div className="text-muted-foreground">records</div>
-                            </div>
-                          )}
-                          {report.duration !== undefined && (
-                            <div className="text-right">
-                              <div className="font-medium">{report.duration}s</div>
-                              <div className="text-muted-foreground">duration</div>
-                            </div>
-                          )}
-                          <Badge variant={
-                            report.status === "success" ? "default" :
-                            report.status === "failed" ? "destructive" :
-                            "secondary"
-                          }>
-                            {stepStatus.label}
-                          </Badge>
-                        </div>
+                        {/* Data Preview for completed steps */}
+                        {report.status === "success" && (
+                          <div className="mt-4 ml-12">
+                            <StepDataPreview runId={runId} stepId={report.stepId} />
+                          </div>
+                        )}
                       </div>
                     );
                   })}
