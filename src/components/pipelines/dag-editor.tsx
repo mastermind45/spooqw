@@ -27,7 +27,6 @@ import {
   Radio, 
   Braces,
   Workflow,
-  Plus,
   Trash2,
   GripVertical,
   Settings,
@@ -108,7 +107,7 @@ function DraggableStep({ kind }: { kind: typeof stepKinds[0] }) {
 }
 
 // Editable step node
-function EditableStepNode({ id, data }: NodeProps) {
+function EditableStepNode({ data }: NodeProps) {
   const { step, onEdit, onDelete } = data as { 
     step: Step; 
     onEdit: (step: Step) => void;

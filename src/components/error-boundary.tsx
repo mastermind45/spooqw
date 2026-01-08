@@ -104,12 +104,6 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 }
 
 // Hook-based error boundary for functional components
-interface UseErrorBoundaryReturn {
-  error: Error | null;
-  resetError: () => void;
-  ErrorFallback: React.FC<{ error: Error }>;
-}
-
 export function useErrorHandler(): (error: Error) => void {
   const [, setError] = React.useState<Error | null>(null);
   

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useCallback } from "react";
-import Editor, { OnMount, Monaco } from "@monaco-editor/react";
+import Editor, { OnMount } from "@monaco-editor/react";
 import type { editor, IPosition, IRange } from "monaco-editor";
 
 interface ConfigEditorProps {
@@ -11,53 +11,6 @@ interface ConfigEditorProps {
   readOnly?: boolean;
   height?: string;
 }
-
-// YAML Schema for SpooqW pipelines
-const yamlSchema = {
-  type: "object",
-  properties: {
-    id: { type: "string", description: "Unique pipeline identifier" },
-    desc: { type: "string", description: "Pipeline description" },
-    steps: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string", description: "Step identifier" },
-          kind: {
-            type: "string",
-            enum: [
-              "input",
-              "input-stream",
-              "sql",
-              "variable",
-              "script",
-              "custom",
-              "customInput",
-              "avro-serde",
-              "udf",
-              "output",
-              "output-stream",
-              "parse-json",
-            ],
-            description: "Step type",
-          },
-          format: { type: "string", description: "Data format (csv, json, parquet, etc.)" },
-          path: { type: "string", description: "File or resource path" },
-          sql: { type: "string", description: "SQL query" },
-          source: { type: "string", description: "Source step ID" },
-          options: { type: "object", description: "Format-specific options" },
-          schema: { type: "string", description: "Schema definition" },
-          cache: { type: "boolean", description: "Cache DataFrame" },
-          show: { type: "boolean", description: "Show sample data" },
-          dependsOn: { type: "array", items: { type: "string" }, description: "Step dependencies" },
-        },
-        required: ["id", "kind"],
-      },
-    },
-  },
-  required: ["id", "steps"],
-};
 
 // Autocomplete suggestions for SpooqW
 const stepKinds = [

@@ -32,7 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { DAGViewer } from "@/components/pipelines/dag-viewer";
 import { StepDataPreview } from "@/components/pipelines/data-preview";
 import { api, createLogsWebSocket } from "@/lib/api";
-import type { Run, RunStatus, LogEntry, Step, Pipeline } from "@/types";
+import type { Run, RunStatus, LogEntry, Pipeline } from "@/types";
 
 const statusConfig: Record<
   RunStatus,

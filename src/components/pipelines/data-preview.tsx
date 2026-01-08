@@ -20,7 +20,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { api } from "@/lib/api";
 
 interface DataPreviewProps {
   runId: string;

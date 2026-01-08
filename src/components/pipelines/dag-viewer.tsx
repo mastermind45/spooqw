@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import {
   ReactFlow,
   Node,
@@ -287,8 +287,8 @@ export function DAGViewer({ steps, stepStatuses, onStepClick }: DAGViewerProps) 
     return edges;
   }, [steps, stepStatuses]);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
 
   return (
     <div className="h-[500px] w-full rounded-lg border bg-muted/20">

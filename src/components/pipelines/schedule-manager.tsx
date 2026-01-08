@@ -102,7 +102,7 @@ function describeCron(cron: string): string {
   return cron;
 }
 
-export function ScheduleManager({ pipelineId, pipelineName }: ScheduleManagerProps) {
+export function ScheduleManager({ pipelineId }: ScheduleManagerProps) {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

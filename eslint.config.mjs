@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Ignore Node.js server files
+    "api-server/**",
+    "mock-server.js",
+    // Ignore test files for lint (they use vitest globals)
+    "__tests__/**",
+    "e2e/**",
+    "*.config.ts",
   ]),
 ]);
 
