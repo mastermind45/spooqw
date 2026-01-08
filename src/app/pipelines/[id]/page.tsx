@@ -17,6 +17,7 @@ import {
   FileCode,
   GitBranch,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DAGViewer } from "@/components/pipelines/dag-viewer";
+import { ScheduleManager } from "@/components/pipelines/schedule-manager";
 import { api } from "@/lib/api";
 import type { Pipeline, Run } from "@/types";
 
@@ -307,6 +309,10 @@ export default function PipelineDetailPage() {
             <Clock className="h-4 w-4" />
             Run History
           </TabsTrigger>
+          <TabsTrigger value="schedules" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Schedules
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="dag" className="space-y-4">
@@ -423,6 +429,10 @@ export default function PipelineDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="schedules">
+          <ScheduleManager pipelineId={pipeline.id} pipelineName={pipeline.name} />
         </TabsContent>
       </Tabs>
 

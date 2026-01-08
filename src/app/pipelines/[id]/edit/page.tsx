@@ -34,6 +34,7 @@ import { DAGViewer } from "@/components/pipelines/dag-viewer";
 import { DAGEditor } from "@/components/pipelines/dag-editor";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
+import { stepsToYaml, parseYamlSteps, extractPipelineMetadata } from "@/lib/yaml-utils";
 import type { Step } from "@/types";
 
 const DEFAULT_CONFIG = `id: new-pipeline
@@ -58,36 +59,8 @@ steps:
     mode: overwrite
     path: /output/result.parquet`;
 
-// Simple YAML parser for steps (in real app, use a proper YAML library)
-function parseYamlSteps(yaml: string): Step[] {
-  const steps: Step[] = [];
-  const stepsMatch = yaml.match(/steps:\s*\n([\s\S]*?)(?=\n\w|$)/);
-  
-  if (!stepsMatch) return steps;
-  
-  const stepsContent = stepsMatch[1];
-  const stepBlocks = stepsContent.split(/\n  - /).filter(Boolean);
-  
-  stepBlocks.forEach((block) => {
-    const idMatch = block.match(/id:\s*(\w+)/);
-    const kindMatch = block.match(/kind:\s*([\w-]+)/);
-    const formatMatch = block.match(/format:\s*(\w+)/);
-    const sourceMatch = block.match(/source:\s*(\w+)/);
-    const pathMatch = block.match(/path:\s*(.+)/);
-    
-    if (idMatch && kindMatch) {
-      steps.push({
-        id: idMatch[1],
-        kind: kindMatch[1] as Step["kind"],
-        format: formatMatch?.[1],
-        source: sourceMatch?.[1],
-        path: pathMatch?.[1]?.trim(),
-      });
-    }
-  });
-  
-  return steps;
-}
+// Track which source is being edited to avoid circular updates
+type EditSource = 'yaml' | 'visual' | 'none';
 
 export default function EditPipelinePage() {
   const params = useParams();
@@ -108,6 +81,7 @@ export default function EditPipelinePage() {
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
   const [running, setRunning] = useState(false);
+  const [editSource, setEditSource] = useState<EditSource>('none');
 
   // Fetch pipeline if editing
   useEffect(() => {
@@ -136,11 +110,32 @@ export default function EditPipelinePage() {
     fetchPipeline();
   }, [pipelineId, isNew]);
 
-  // Parse steps when config changes
+  // Parse steps when config changes (only if edited from YAML)
   useEffect(() => {
+    if (editSource === 'visual') {
+      setEditSource('none');
+      return;
+    }
     const parsedSteps = parseYamlSteps(config);
     setSteps(parsedSteps);
-  }, [config]);
+  }, [config, editSource]);
+
+  // Handle config change from YAML editor
+  const handleConfigChange = (newConfig: string) => {
+    setEditSource('yaml');
+    setConfig(newConfig);
+  };
+
+  // Handle steps change from Visual Editor (sync back to YAML)
+  const handleStepsChange = (newSteps: Step[]) => {
+    setEditSource('visual');
+    setSteps(newSteps);
+    
+    // Generate new YAML from steps
+    const metadata = extractPipelineMetadata(config);
+    const newYaml = stepsToYaml(newSteps, metadata.id || name, metadata.desc || description);
+    setConfig(newYaml);
+  };
 
   const handleValidate = async () => {
     setValidating(true);
@@ -430,7 +425,7 @@ export default function EditPipelinePage() {
                 <CardContent className="p-0 overflow-hidden rounded-b-lg">
                   <ConfigEditor
                     value={config}
-                    onChange={setConfig}
+                    onChange={handleConfigChange}
                     language="yaml"
                     height="500px"
                   />
@@ -449,10 +444,7 @@ export default function EditPipelinePage() {
                 <CardContent className="p-0">
                   <DAGEditor
                     steps={steps}
-                    onChange={(newSteps) => {
-                      setSteps(newSteps);
-                      // TODO: Sync back to YAML config
-                    }}
+                    onChange={handleStepsChange}
                   />
                 </CardContent>
               </Card>

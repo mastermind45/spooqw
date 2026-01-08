@@ -11,21 +11,13 @@ A modern web interface for [Spooq](https://github.com/supermariolabs/spooq) - th
 
 - **Dashboard** - Overview of pipelines, runs, and system stats
 - **Pipeline Editor** - Monaco-based YAML editor with syntax highlighting
-- **DAG Visualizer** - Interactive pipeline visualization with React Flow
+- **Visual DAG Editor** - Drag-and-drop pipeline builder with React Flow
+- **DAG Visualizer** - Interactive pipeline visualization
 - **Run Monitoring** - Real-time logs and step progress tracking
+- **Data Preview** - View step output data with export to CSV
 - **Connection Manager** - Configure and test data source connections
+- **Scheduling** - Cron-based pipeline scheduling with timezone support
 - **Dark/Light Theme** - System-aware theme switching
-
-## Screenshots
-
-### Dashboard
-Overview with stats, recent runs, and pipeline status.
-
-### Pipeline Editor
-Monaco YAML editor with live DAG preview.
-
-### Run Monitoring
-Real-time logs and step progress visualization.
 
 ## Tech Stack
 
@@ -39,6 +31,11 @@ Real-time logs and step progress visualization.
 - **Notifications**: Sonner
 
 ## Quick Start
+
+### Prerequisites
+
+- Node.js 20+
+- Docker & Docker Compose (for full stack)
 
 ### Development with Mock Server
 
@@ -57,61 +54,160 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-### With Real Backend
+### Docker Compose (Full Stack)
 
 ```bash
-# Ensure SpooqW Core is running on port 4242
-npm run dev
+# Start all services (PostgreSQL, API, Web, Spark)
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
 ```
+
+Services:
+- **Web UI**: http://localhost:3000
+- **API Server**: http://localhost:4242
+- **WebSocket**: ws://localhost:4243
+- **Spark Master UI**: http://localhost:8080
 
 ## Project Structure
 
 ```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx           # Dashboard
-│   ├── pipelines/         # Pipeline CRUD + Editor
-│   ├── runs/              # Run monitoring
-│   ├── connections/       # Data source connections
-│   └── settings/          # Configuration
-├── components/
-│   ├── ui/                # shadcn/ui components
-│   ├── layout/            # Sidebar, Header
-│   ├── dashboard/         # Stats, Recent runs
-│   └── pipelines/         # DAG viewer, Config editor
-├── lib/
-│   ├── api.ts             # API client
-│   └── utils.ts           # Utilities
-└── types/
-    └── index.ts           # TypeScript definitions
+spooqw/
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── page.tsx            # Dashboard
+│   │   ├── pipelines/          # Pipeline CRUD + Editor
+│   │   ├── runs/               # Run monitoring
+│   │   ├── connections/        # Data source connections
+│   │   └── settings/           # Configuration
+│   ├── components/
+│   │   ├── ui/                 # shadcn/ui components
+│   │   ├── layout/             # Sidebar, Header
+│   │   ├── dashboard/          # Stats, Recent runs
+│   │   ├── pipelines/          # DAG viewer/editor, Config editor
+│   │   └── error-boundary.tsx  # Error handling
+│   ├── lib/
+│   │   ├── api.ts              # API client with WebSocket
+│   │   ├── yaml-utils.ts       # YAML parsing/generation
+│   │   └── utils.ts            # Utilities
+│   └── types/
+│       └── index.ts            # TypeScript definitions
+├── api-server/
+│   ├── server.js               # Express API server with PostgreSQL
+│   └── package.json
+├── docker/
+│   ├── Dockerfile.api          # API server container
+│   ├── init.sql                # PostgreSQL schema
+│   └── spark-defaults.conf     # Spark configuration
+├── __tests__/                  # Unit and integration tests
+├── e2e/                        # Playwright E2E tests
+├── docker-compose.yml
+└── mock-server.js              # Standalone mock server
 ```
 
 ## API Endpoints
 
-SpooqW expects these endpoints from the backend:
-
+### Pipelines
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v2/dashboard/stats` | Dashboard statistics |
-| GET | `/api/v2/pipelines` | List pipelines |
+| GET | `/api/v2/pipelines` | List all pipelines |
 | POST | `/api/v2/pipelines` | Create pipeline |
-| GET | `/api/v2/pipelines/:id` | Get pipeline |
+| GET | `/api/v2/pipelines/:id` | Get pipeline details |
 | PUT | `/api/v2/pipelines/:id` | Update pipeline |
 | DELETE | `/api/v2/pipelines/:id` | Delete pipeline |
 | POST | `/api/v2/pipelines/:id/run` | Execute pipeline |
-| GET | `/api/v2/runs` | List runs |
+| POST | `/api/v2/pipelines/validate` | Validate config |
+
+### Runs
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/runs` | List runs (with filters) |
 | GET | `/api/v2/runs/:id` | Get run details |
 | POST | `/api/v2/runs/:id/cancel` | Cancel run |
 | GET | `/api/v2/runs/:id/logs` | Get run logs |
+| GET | `/api/v2/runs/:id/preview/:stepId` | Get step data preview |
+
+### Connections
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | GET | `/api/v2/connections` | List connections |
 | POST | `/api/v2/connections` | Create connection |
+| PUT | `/api/v2/connections/:id` | Update connection |
+| DELETE | `/api/v2/connections/:id` | Delete connection |
 | POST | `/api/v2/connections/:id/test` | Test connection |
+
+### Schedules
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/v2/schedules` | List schedules |
+| POST | `/api/v2/schedules` | Create schedule |
+| PUT | `/api/v2/schedules/:id` | Update schedule |
+| DELETE | `/api/v2/schedules/:id` | Delete schedule |
 
 ## Environment Variables
 
 ```env
+# .env.local
 NEXT_PUBLIC_API_URL=http://localhost:4242/api/v2
+NEXT_PUBLIC_WS_URL=ws://localhost:4243
+
+# For API server
+DATABASE_URL=postgresql://spooq:spooq@localhost:5432/spooqw
+SPARK_MASTER_URL=spark://localhost:7077
 ```
+
+## Pipeline Configuration
+
+SpooqW uses YAML for pipeline configuration, fully compatible with Spooq:
+
+```yaml
+id: my-pipeline
+desc: Example ETL pipeline
+
+steps:
+  - id: input_data
+    kind: input
+    format: csv
+    path: /data/input.csv
+    cache: true
+
+  - id: transform
+    kind: sql
+    sql: |
+      SELECT 
+        id,
+        name,
+        amount * 1.1 as adjusted_amount
+      FROM input_data
+      WHERE status = 'active'
+
+  - id: output_data
+    kind: output
+    source: transform
+    format: parquet
+    mode: overwrite
+    path: /output/result.parquet
+```
+
+### Supported Step Kinds
+
+| Kind | Description |
+|------|-------------|
+| `input` | Read data from files (CSV, JSON, Parquet, Delta, etc.) |
+| `input-stream` | Streaming input (Kafka, etc.) |
+| `sql` | SQL transformation |
+| `script` | Custom Scala/Python script |
+| `variable` | Define variables |
+| `custom` | Custom transformer class |
+| `customInput` | Custom input class |
+| `udf` | User-defined functions |
+| `output` | Write data to files |
+| `output-stream` | Streaming output |
+| `parse-json` | Parse JSON strings |
 
 ## Scripts
 
@@ -120,18 +216,33 @@ npm run dev       # Start development server
 npm run build     # Production build
 npm run start     # Start production server
 npm run lint      # Run ESLint
+npm run test      # Run unit tests
+npm run test:e2e  # Run E2E tests
 ```
 
 ## Docker
 
 ```bash
+# Build and run standalone
 docker build -t spooqw .
 docker run -p 3000:3000 spooqw
+
+# Or use docker-compose for full stack
+docker-compose up -d
 ```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## Related
 
 - [Spooq](https://github.com/supermariolabs/spooq) - ETL Big Data tool powered by Apache Spark
+- [Apache Spark](https://spark.apache.org/) - Distributed computing engine
 
 ## License
 
