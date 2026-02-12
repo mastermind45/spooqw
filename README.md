@@ -1,5 +1,7 @@
 # SpooqW
 
+![SpooqW logo](logo.png)
+
 A modern web interface for [Spooq](https://github.com/supermariolabs/spooq) - the ETL Big Data tool powered by Apache Spark.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
